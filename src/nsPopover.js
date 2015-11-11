@@ -314,22 +314,13 @@
 
           function outsideClickHandler(e) {
             function isInPopover(el) {
-              if (el.id === id) {
-                return true;
+              while (angular.isDefined(el) && (el.id !== id)) {
+                  if (el === document) {
+                      return false;
+                  }
+                  el = angular.element(el).parent()[0];
               }
-
-              var parent = angular.element(el).parent()[0];
-
-              if (!parent) {
-                return false;
-              }
-
-              if (parent.id === id) {
-                return true;
-              }
-              else {
-                return isInPopover(parent);
-              }
+              return true;
             }
 
             if ($popover.isOpen && e.target !== elm[0]) {
@@ -431,7 +422,21 @@
             }
           };
 
-          /**
+          function hideCallback () {
+            $popover.off('click', insideClickHandler);
+            $document.off('click', outsideClickHandler);
+            elm.off('click', buttonClickHandler);
+            $popover.isOpen = false;
+            displayer_.cancel();
+            $popover.css('display', 'none');
+            removeEventListeners();
+
+            // Call the close callback
+            options.onClose(scope);
+          }
+
+
+            /**
            * Responsible for hiding of popover.
            * @type {Object}
            */
@@ -444,28 +449,25 @@
              * @param delay {Number}  The time (in seconds) to wait before set the display property.
              */
             hide: function(delay) {
-              $timeout.cancel(hider_.id_);
+                $timeout.cancel(hider_.id_);
 
-              // do not hide if -1 is passed in.
+                // do not hide if -1 is passed in.
               if(delay !== "-1") {
                 // delay the hiding operation for 1.5s by default.
                 if (!isDef(delay)) {
                   delay = 1.5;
                 }
 
-                hider_.id_ = $timeout(function() {
-                  $popover.off('click', insideClickHandler);
-                  $document.off('click', outsideClickHandler);
-                  elm.off('click', buttonClickHandler);
-                  $popover.isOpen = false;
-                  displayer_.cancel();
-                  $popover.css('display', 'none');
-                  removeEventListeners();
-
-                  // Call the close callback
-                  options.onClose(scope);
-                }, delay*1000);
+                hider_.id_ = $timeout(hideCallback, delay*1000);
               }
+            },
+
+            /**
+             * Set the display property of the popover to 'none' as soon as possible.
+             */
+            hideImmediate: function() {
+                hider_.cancel();
+                $timeout(hideCallback, 0);
             },
 
             cancel: function() {
@@ -507,7 +509,7 @@
 
           // Allow closing the popover programatically.
           scope.hidePopover = function() {
-            hider_.hide(0);
+            hider_.hideImmediate();
           };
 
           // Hide popovers that are associated with the passed group.
