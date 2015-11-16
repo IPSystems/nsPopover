@@ -99,6 +99,7 @@
           var placement_;
           var unregisterActivePopoverListeners;
           var unregisterDisplayMethod;
+          var repositionScheduled = false;
 
           if (options.mouseRelative) {
             options.mouseRelativeX = options.mouseRelative.indexOf('x') !== -1;
@@ -523,6 +524,25 @@
           scope.$on('$destroy', function() {
             $popover.remove();
             unregisterDisplayMethod();
+          });
+
+          // fix for repositioning the popover panel when extra content is displayed above target element
+          scope.$watch(function() {
+            if (!repositionScheduled) {
+              repositionScheduled = true;
+
+              scope.$$postDigest(function() {
+                repositionScheduled = false;
+
+                if ($popover.isOpen) {
+                  // position the popover accordingly to the defined placement around the |elm|.
+                  var elmRect = getBoundingClientRect(elm[0]);
+
+                  // If the mouse-relative options is specified we need to adjust the element client rect to the current mouse coordinates.
+                  move($popover, placement_, align_, elmRect, $triangle);
+                }
+              });
+            }
           });
 
           // Display the popover when a message is broadcasted on the
